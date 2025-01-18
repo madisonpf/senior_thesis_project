@@ -1,14 +1,5 @@
-# Reproducible Research Template
+# Identifying Demographic Disparities in EEB Senior Thesis
 
-This is an example template to help format a research project from start to finish.
-
-Reproducible research is crucial to the scientific enterprise, but the field of animal behavior has been slow to adopt best practices:
-
-  >Miller, S.E., Jernigan, C.M., Legan, A.W., Miller, C.H., Tumulty, J.P., Walton, A. and Sheehan, M.J., 2021. Animal behavior missing from data archives. <i>Trends in Ecology &   Evolution.</i> [doi: 10.1016/j.tree.2021.07.008](https://doi.org/10.1016/j.tree.2021.07.008)
-
-But we can do better! There are some great resources available for increasing reproducibility, and this template should help provide lab-specific information for organizing your project. For more general information, see:   
-
-   >[A Guide to Reproducible Code in Ecology and Evolution, British Ecological Society, 2017](https://www.britishecologicalsociety.org/wp-content/uploads/2017/12/guide-to-reproducible-code.pdf)
 
 ## Installation
 
