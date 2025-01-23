@@ -3,6 +3,7 @@
 ## LOAD PACKAGES
 library(dplyr)
 library(ggplot2)
+library(bayes)
 
 
 #Pre-load in notes to-do: get access to Infoview, request access to csvs data pulls, ask Ali for finished data pulls for all years, download CSVs
