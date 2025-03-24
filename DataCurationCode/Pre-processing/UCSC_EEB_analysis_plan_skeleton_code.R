@@ -4,6 +4,7 @@
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(patchwork)
 
 ## LOAD SEVEN DATA FILES 
 
@@ -258,9 +259,6 @@ demographic_summary <- bioe_students %>%
   group_by(PD.Gender...Current, ET.Ethnic.Group.Category, PD.Domestic.International...Current, 
            UAD.Admit.Type.Descr, UAD.First.Generation, SGC.Is.EOP, completed_bioe_195, TA.Term.Code) %>%
   summarise(count = n(), .groups = "drop")
-
-# Load patchwork for combining plots
-library(patchwork)
 
 # Define a color palette for categorical data
 color_palette <- scale_fill_brewer(palette = "Spectral") #Need to change to match demographic v. time plots 
