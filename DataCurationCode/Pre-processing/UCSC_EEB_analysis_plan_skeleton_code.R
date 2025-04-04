@@ -125,8 +125,6 @@ add_off <- add_off %>%
   ) %>%
   ungroup()
 
-which(bioe_195_final == "BIOE BS", arr.ind = TRUE)
-
 bioe_students <- bioe_195_final %>%
   filter(PLNA.Plan.Descr %in% c("Ecology and Evolution BS", "Marine Biology BS", "Biology BS", "Plant Sciences BS"))
 
@@ -163,7 +161,7 @@ quarter_names <- c(
 )
 
 # Parse TA.Term.Code into year and quarter
-senior_thesis_time <- class_performance %>%
+senior_thesis_time <- bioe_students %>%
   filter(completed_bioe_195 == "Yes") %>%
   mutate(
     year = as.numeric(substr(TA.Term.Code, 1, 3)) + 2000, # Extract year
@@ -633,3 +631,85 @@ final_demo_time <- (eop_plot | first_gen_plot) / (international_stat_plot | gend
 
 # Display the final combined plot
 print(final_demo_time)
+
+
+
+####################################################### PARTICIPATION METRIC ############################################################
+
+calculate_participation_rate <- function(data, demographic_column, demographic_group) {
+  
+  # Total number of students in the student body
+  total_students <- nrow(data)
+  
+  # Total number of students in the given demographic group
+  total_demographic_students <- sum(data[[demographic_column]] == demographic_group, na.rm = TRUE)
+  
+  # Total number of students who completed a thesis
+  total_thesis_students <- sum(data$completed_bioe_195 == "Yes", na.rm = TRUE)
+  
+  # Total number of thesis participants in this group
+  demographic_thesis_students <- sum(data[[demographic_column]] == demographic_group &
+                                       data$completed_bioe_195 == "Yes", na.rm = TRUE)
+  
+  # Skip calculation if there are no students in group or no thesis participants
+  if (total_demographic_students == 0 || total_thesis_students == 0) {
+    return(data.frame(Demographic = demographic_group,
+                      Participation_Rate = NA,
+                      Group_Proportion = NA,
+                      Thesis_Proportion = NA))
+  }
+  
+  # Calculate proportions
+  group_proportion <- total_demographic_students / total_students
+  thesis_proportion <- demographic_thesis_students / total_thesis_students
+  
+  # Calculate representation ratio
+  participation_rate <- thesis_proportion / group_proportion
+  
+  participation_rate_full <- participation_rate / total_students
+  
+  return(data.frame(Demographic = demographic_group,
+                    Participation_Rate = participation_rate_full,
+                    Group_Proportion = group_proportion,
+                    Thesis_Proportion = thesis_proportion))
+}
+
+demographic_groups <- unique(bioe_students$ET.Ethnic.Group.Category)
+
+participation_rates <- lapply(demographic_groups, function(group) {
+  calculate_participation_rate(bioe_students, "ET.Ethnic.Group.Category", group)
+})
+
+participation_rates <- do.call(rbind, participation_rates)
+
+print(participation_rates)
+
+
+demographic_groups_g <- unique(bioe_students$PD.Gender...Current)
+
+# Calculate participation rates for each group
+participation_rates_gender <- lapply(demographic_groups_g, function(group) {
+  calculate_thesis_participation_rate(bioe_students, "PD.Gender...Current", group)
+})
+
+# Combine results into a data frame
+participation_rates_gender <- do.call(rbind, participation_rates_gender)
+print(participation_rates_gender)
+
+demographic_groups <- unique(bioe_students$SGC.Is.EOP)
+
+# Calculate participation rates for each group
+participation_rates_eop <- lapply(demographic_groups, function(group) {
+  calculate_thesis_participation_rate(bioe_students, "SGC.Is.EOP", group)
+})
+
+# Combine results into a data frame
+participation_rates_eop_df <- do.call(rbind, participation_rates_eop)
+print(participation_rates_eop_df)
+
+
+
+################################################# FIELD COURSE PARTICIPATION ASSOCIATIONS ###############################################
+
+
+
