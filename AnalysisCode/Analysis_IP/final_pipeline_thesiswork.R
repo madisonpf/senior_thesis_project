@@ -36,17 +36,15 @@ quarter_performance<- read.csv("./PhD Documents/Senior Thesis Project/data/Quart
 quarter_info       <- read.csv("./PhD Documents/Senior Thesis Project/data/QuarterInfo_v2_feb5.csv", header=TRUE, sep=",")
 class_performance  <- read.csv("./PhD Documents/Senior Thesis Project/data/ClassPerformance_v2_apr22.csv", header=TRUE, sep=",")
 offerings          <- read.csv("./PhD Documents/Senior Thesis Project/data/Offerings.csv", header=TRUE, sep=",")
-
+field_course_info <- read.csv("./PhD Documents/Senior Thesis Project/data/fieldcourse_info_aug26.csv", header = TRUE, sep=",")
 
 # =========================
 # COURSE LIST & QUICK QC
 # =========================
 ## Course list of interest (used for counts + flags)
 all_courses <- c(
-  "BIOE 20F","BIOE 82","BIOE 128L","BIOE 141L","BIOE 155L","BIOE 158L","BIOE 145L",
-  "BIOE 157A","BIOE 161L","BIOE 159A","BIOE 150L","BIOE 151A","ENVS 107A","BIOE 153A",
-  "BIOE 245L","BIOE 195","BIOE 85","ENVS 104A"
-)
+  "BIOE 20F","BIOE 82","BIOE 85", "BIOE 128L","BIOE 141L","BIOE 155L","BIOE 158L","BIOE 145L",
+  "BIOE 157A","BIOE 161L","BIOE 159A","BIOE 150L","BIOE 151A","ENVS 107A","BIOE 153A","BIOE 195","ENVS 104A")
 
 ## Quick occurrence check
 course_counts <- sapply(all_courses, \(crs) sum(class_performance$SE.Subject.Catalog.Nbr == crs, na.rm = TRUE))
@@ -55,7 +53,7 @@ print(course_counts)
 # Hand-entered enrollments used to establish plotting order
 bioe_courses <- tibble(
   Course   = all_courses,
-  Students = c(453,1293,253,260,73,167,157,28,422,429,67,313,555,11,0,189,133,351)
+  Students = c(453,1293,133,253,260,73,167,157,28,422,429,67,313,555,11,189,351)
 )
 
 # Simple gradient for the bar plot; order by student count (small → large)
@@ -102,7 +100,7 @@ bioe_195_final  <- left_join(
   by = c("CodedID","TA.Term.Code")
 )
 
-write.csv(bioe_195_final, file.path(data_dir, "bioe_195_final.csv"), row.names = FALSE)
+#write.csv(bioe_195_final, file.path(data_dir, "bioe_195_final.csv"), row.names = FALSE)
 
 ## Restrict to majors of interest
 bioe_students <- bioe_195_final %>%
@@ -111,7 +109,33 @@ bioe_students <- bioe_195_final %>%
     Term_Units_Earned != 0
   )
 
-## Quick QC
+head(field_course_info)
+
+field_lu <- field_course_info %>%
+  transmute(
+    SE.Subject.Catalog.Nbr = stringr::str_trim(as.character(SE.Subject.Catalog.Nbr)),
+    Units                  = as.numeric(Units),
+    TotalFieldHours        = as.numeric(Total.field.hours),
+    Independent.projects   = stringr::str_trim(as.character(Independent.projects)),
+    independent_flag       = dplyr::case_when(
+      stringr::str_to_lower(Independent.projects) %in% c("yes","y","true","t","1") ~ 1L,
+      stringr::str_to_lower(Independent.projects) %in% c("no","n","false","f","0")  ~ 0L,
+      TRUE ~ NA_integer_
+    )
+  ) %>%
+  dplyr::group_by(SE.Subject.Catalog.Nbr) %>%  # collapse duplicates per course (if any)
+  dplyr::summarise(
+    Units                 = dplyr::first(Units[!is.na(Units)], default = NA_real_),
+    TotalFieldHours       = dplyr::first(TotalFieldHours[!is.na(TotalFieldHours)], default = NA_real_),
+    Independent.projects  = dplyr::first(Independent.projects[!is.na(Independent.projects)], default = NA_character_),
+    .groups = "drop"
+  )
+
+# 2) Attach course info to your long student/course rows
+bioe_students <- bioe_students %>%
+  mutate(SE.Subject.Catalog.Nbr = stringr::str_trim(as.character(SE.Subject.Catalog.Nbr))) %>%
+  left_join(field_lu, by = "SE.Subject.Catalog.Nbr")
+
 length(unique(bioe_students$CodedID))
 #Check if there are multiple instructors per term
 message("Unique instructor per term: ", !any(bioe_students$multiple_instructors))
@@ -189,7 +213,7 @@ bioe_students_clean <- latest_term %>%
     "First Gen"       = "UAD.First.Generation",
     "EOP"             = "SGC.Is.EOP"
   ) %>%
-  select(all_of(dems), "completed_BIOE_195", "academic_year")
+  dplyr::select(all_of(dems), "completed_BIOE_195", "academic_year")
 
 # Aggregate across all years: DemRate (representation), ThesisRate (participation),
 # and the gap = ThesisRate - DemRate per demographic level.
@@ -341,7 +365,7 @@ course_cols <- setdiff(grep("^completed_", names(student_flags), value = TRUE), 
 
 # Proportions of BIOE 195 completion by course flag
 students_flags_long <- student_flags %>%
-  select(completed_BIOE_195, all_of(course_cols)) %>%
+  dplyr::select(completed_BIOE_195, all_of(course_cols)) %>%
   pivot_longer(cols = -completed_BIOE_195, names_to = "Course", values_to = "Completed")
 
 ggplot(students_flags_long, aes(x = factor(Completed), fill = factor(completed_BIOE_195))) +
@@ -376,7 +400,7 @@ summary(multi_mod_all_courses)
 # OR table (95% CI), flagged large ORs for review only
 or_table <- broom::tidy(multi_mod_all_courses, conf.int = TRUE) %>%
   mutate(OR = exp(estimate), OR_low = exp(conf.low), OR_high = exp(conf.high)) %>%
-  select(term, OR, OR_low, OR_high, p.value)
+  dplyr::select(term, OR, OR_low, OR_high, p.value)
 print(or_table)
 
 suspect_ORs <- or_table %>% filter(is.finite(OR), OR >= 20 | OR_low >= 10)
@@ -500,19 +524,35 @@ course_set <- bioe_courses %>% arrange(Students) %>% pull(Course)
 manual_colors1 <- set_names(rev(colorRampPalette(c("#1f78b4","#ffd166","#f28482","#7b2cbf"))(length(course_set))), course_set)
 
 # Filter to courses of interest and order factor by mean timing for plotting
-avg_course_pct_cs <- avg_course_pct %>%
-  dplyr::filter(Course %in% course_set) %>%
-  dplyr::mutate(Course = forcats::fct_reorder(Course, mean_pct))
+avg_course_pct_cs <- time_completed_summary %>%
+  filter(SE.Subject.Catalog.Nbr %in% course_set) %>%
+  group_by(SE.Subject.Catalog.Nbr) %>%
+  summarise(
+    median_pct = median(course_percentage_degree, na.rm = TRUE),
+    lq         = quantile(course_percentage_degree, 0.25, na.rm = TRUE),
+    uq         = quantile(course_percentage_degree, 0.75, na.rm = TRUE),
+    n          = n(),
+    Course     = first(SE.Subject.Catalog.Nbr),
+    .groups    = "drop"
+  ) %>%
+  mutate(Course = fct_reorder(Course, median_pct))
 
 #Plot mean timing for each course w/ gradient 
-ggplot(avg_course_pct_cs, aes(x = Course, y = mean_pct)) +
+ggplot(avg_course_pct_cs, aes(x = Course, y = median_pct)) +
   geom_errorbar(aes(ymin = lq, ymax = uq), width = 0.12, linewidth = 0.3, color = "black") +
   geom_point(aes(size = n, color = Course), stroke = 0, alpha = 0.95) +
   scale_color_manual(values = manual_colors1, guide = "none") +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_size_continuous(name = "# of Students", range = c(3, 10)) +  
+  scale_y_continuous(limits = c(0, 1), labels = scales::percent_format(accuracy = 1)) +
   coord_flip() +
-  labs(title = "When Students Take High-Impact Courses", x = "Course", y = "% of Degree Completed") +
-  theme(panel.grid.minor = element_blank(), axis.text.y = element_text(size = 11))
+  labs(
+    title = "When Students Take High-Impact Courses",
+    x = "Course",
+    y = "% of Degree Completed"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(panel.grid.minor = element_blank(),
+        axis.text.y = element_text(size = 11))
 
 # Field course count distribution (restricted to course_set, including zero)
 full_counts <- bioe_students %>%
@@ -670,7 +710,9 @@ demo_vars <- bioe_students %>%
            PD.Domestic.International...Current,
            ET.Ethnic.Group.Category,
            UAD.First.Generation,
-           TA.GPA...Cumulative)
+           TA.GPA...Cumulative,
+           TotalFieldHours,
+           Independent.projects)
 
 ## 4) Assemble student-level model frame
 model_students <- student_summary %>%
@@ -678,14 +720,14 @@ model_students <- student_summary %>%
   left_join(student_match_full, by = "CodedID") %>%        # add prior-instructor flag
   left_join(demo_vars,          by = "CodedID") %>%        # add demographics
   rename_with(~ sub("\\.y$", "", .), ends_with(".y")) %>%  # clean join suffixes
-  select(-ends_with(".x")) %>%
+  dplyr::select(-ends_with(".x")) %>%
   mutate(
     avg_time_pct_field   = rowMeans(across(starts_with("time_pct_")), na.rm = TRUE), # mean timing
     avg_time_pct_field_s = as.numeric(scale(avg_time_pct_field)),                    # scaled timing
     completed_BIOE_195   = factor(completed_BIOE_195, levels = c(0, 1)),             # 0/1 outcome as factor
     across(c(UAD.Admit.Type.Descr, PD.Gender...Current, SGC.Is.EOP,
              PD.Domestic.International...Current, ET.Ethnic.Group.Category,
-             UAD.First.Generation, TA.GPA...Cumulative), factor)                     # categorical covariates
+             UAD.First.Generation, TA.GPA...Cumulative, TotalFieldHours, Independent.projects), factor)                     # categorical covariates
   ) %>%
   filter(!is.na(completed_BIOE_195))                                                 # keep valid outcome rows
 
@@ -701,8 +743,10 @@ model_students2 <- model_students %>%
   ) %>%
   mutate(
     GPA_scaled = scale(as.numeric(TA.GPA...Cumulative))[, 1],                        # scale GPA
-    had_prior_course = factor(had_prior_course, levels = c(FALSE, TRUE)),            # 0/1 factor
+    had_prior_course = factor(had_prior_course, levels = c(FALSE, TRUE)), # 0/1 factor
     # reference (baseline) levels used for contrasts
+    total_field_hours = as.numeric(TotalFieldHours),
+    independent.project = factor(Independent.projects, levels = c("Yes", "No")),
     UAD.Admit.Type.Descr     = fct_relevel(UAD.Admit.Type.Descr, "First-Time Freshman"),
     PD.Gender...Current      = fct_relevel(PD.Gender...Current,  "F"),
     SGC.Is.EOP               = fct_relevel(SGC.Is.EOP,           "N"),
@@ -717,7 +761,7 @@ model_students2 <- model_students %>%
 glm_student2_clean <- glm(
   completed_BIOE_195 ~ n_field_courses * avg_time_pct_field_s +
     UAD.Admit.Type.Descr + PD.Gender...Current + SGC.Is.EOP +
-    ET.Ethnic.Group.Category + UAD.First.Generation + GPA_scaled,
+    ET.Ethnic.Group.Category + UAD.First.Generation + GPA_scaled + total_field_hours,
   data   = model_students2,
   family = binomial("logit")
 )
@@ -759,26 +803,130 @@ car::vif(glm_student2_clean)  # multicollinearity check
 # ========================
 # Per-course timing GLM (Took + Timing per course, plus GPA)
 # ========================
-field_courses_core <- c("BIOE 82","BIOE 128L","BIOE 141L","BIOE 151A","BIOE 155L")
-courses_timing     <- str_replace(field_courses_core, " ", "_")
 
-model_students2b <- model_students2 %>%
-  mutate(across(
-    .cols  = all_of(paste0("completed_", courses_timing)),
-    .fns   = ~ as.integer(. == 1L),
-    .names = "flag_{col}"                                      # binary “took” flags
-  )) %>%
-  mutate(across(
-    .cols  = all_of(paste0("time_pct_", courses_timing)),
-    .fns   = list(zero = ~ ifelse(get(sub("time_pct_","completed_", cur_column())) == 1, .x, 0)),
-    .names = "{col}"                                           # timing = 0 if course not taken
-  ))
+## COURSE-LEVEL MODELS - what factors in a field course predicts students taking a senior thesis? ## 
+to_year <- function(term_code) as.integer(substr(as.character(term_code), 1, 3)) + 1800
+to_quarter <- function(term_code) {
+  qd <- substr(as.character(term_code), 4, 4)
+  dplyr::case_when(qd == "8" ~ 1L, qd == "0" ~ 2L, qd == "2" ~ 3L, qd == "4" ~ 4L, TRUE ~ NA_integer_)
+}
 
-int_terms  <- map_chr(courses_timing, ~ paste0("flag_","completed_",.x," + ","time_pct_",.x))  # took + timing per course
-fml_all    <- as.formula(paste("completed_BIOE_195 ~", paste(c(int_terms, "GPA_scaled"), collapse = " + ")))
+# Harmonize join keys
+time_completed_summary <- time_completed_summary %>% mutate(CodedID = as.character(CodedID))
+model_students2        <- model_students2        %>% mutate(CodedID = as.character(CodedID))
 
-glm_all_courses <- glm(fml_all, data = model_students2b, family = binomial("logit"))
-summary(glm_all_courses)
+stu_outcome <- time_completed_summary %>%
+    mutate(CodedID = as.character(CodedID)) %>%
+    filter(SE.Student.Enrollment.Status.Code == "E") %>%
+    group_by(CodedID) %>%
+    summarise(
+      completed_BIOE_195 = as.integer(any(SE.Subject.Catalog.Nbr == "BIOE 195")),
+      .groups = "drop"
+    )
+  
+  # sanity: must be unique keys
+  stopifnot(n_distinct(stu_outcome$CodedID) == nrow(stu_outcome))
+  
+  # ----- 1) Course attributes you need (keep names consistent) -----
+  field_attrs <- field_lu %>%
+    dplyr::select(SE.Subject.Catalog.Nbr, TotalFieldHours, Independent.projects)
+  
+  field_courses_core <- c("BIOE 82","BIOE 128L","BIOE 141L","BIOE 151A","BIOE 155L")
+  
+  # ----- 2) Build student×offering table (takers of ANY field course) -----
+  enroll_base <- time_completed_summary %>%
+    mutate(CodedID = as.character(CodedID)) %>%
+    filter(SE.Student.Enrollment.Status.Code == "E",
+           SE.Subject.Catalog.Nbr %in% field_courses_core) %>%
+    distinct(CodedID, SE.Subject.Catalog.Nbr, TA.Term.Code, CI.Instructor.Name, .keep_all = TRUE) %>%
+    # drop any stale column to avoid .x/.y suffixing
+    dplyr::select(-any_of("completed_BIOE_195")) %>%
+    # attach outcome (one-to-many: one student outcome -> many enrollments)
+    left_join(stu_outcome, by = "CodedID", relationship = "many-to-one") %>%
+    # attach offering attributes
+    left_join(field_attrs, by = "SE.Subject.Catalog.Nbr") %>%
+    mutate(
+      thesis              = completed_BIOE_195,  # 0/1
+      TotalFieldHours_num = suppressWarnings(as.numeric(as.character(TotalFieldHours))),
+      indep_proj          = as.integer(Independent.projects %in% c("Yes","Y",1,TRUE)),
+      year_offered        = to_year(TA.Term.Code),
+      quarter             = to_quarter(TA.Term.Code),
+      course              = SE.Subject.Catalog.Nbr,
+      instructor          = as.character(CI.Instructor.Name)
+    )
+ 
+offerings <- enroll_base %>%
+    group_by(course, TA.Term.Code, instructor) %>%
+    summarise(
+      year_offered        = first(year_offered),
+      quarter             = first(quarter),
+      TotalFieldHours_num = suppressWarnings(as.numeric(first(TotalFieldHours_num))),
+      indep_proj          = first(indep_proj),
+      n = n(),
+      k = sum(thesis, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    filter(n >= 8, !is.na(k), !is.na(TotalFieldHours_num), !is.na(indep_proj))
+  
+
+m_offering <- glm(
+    cbind(k, n - k) ~ scale(TotalFieldHours_num) + indep_proj + scale(year_offered),
+    data = offerings,
+    family = binomial("logit")
+  )
+summary(m_offering)
+
+
+# --- BIOE 82 ---
+model_students_82_only <- model_students2 %>%
+  filter(completed_BIOE_82 == 1) 
+
+glm_BIOE_82 <- glm(
+  completed_BIOE_195 ~ time_pct_BIOE_82 + GPA_scaled,
+  data = model_students_82_only, family = binomial("logit")
+)
+summary(glm_BIOE_82)
+
+# --- BIOE 128L ---
+model_students_128L_only <- model_students2 %>%
+  filter(completed_BIOE_128L == 1) 
+
+glm_BIOE_128L <- glm(
+  completed_BIOE_195 ~ time_pct_BIOE_128L + GPA_scaled,
+  data = model_students_128L_only, family = binomial("logit")
+)
+summary(glm_BIOE_128L)
+
+# --- BIOE 141L ---
+model_students_141L_only <- model_students2 %>%
+  filter(completed_BIOE_141L == 1) 
+
+glm_BIOE_141L <- glm(
+  completed_BIOE_195 ~ time_pct_BIOE_141L + GPA_scaled,
+  data = model_students_141L_only, family = binomial("logit")
+)
+summary(glm_BIOE_141L)
+
+# --- BIOE 151A ---
+model_students_151A_only <- model_students2 %>%
+  filter(completed_BIOE_151A == 1) 
+
+glm_BIOE_151A <- glm(
+  completed_BIOE_195 ~ time_pct_BIOE_151A + GPA_scaled,
+  data = model_students_151A_only, family = binomial("logit")
+)
+summary(glm_BIOE_151A)
+
+# --- BIOE 155L ---
+model_students_155L_only <- model_students2 %>%
+  filter(completed_BIOE_155L == 1) 
+
+glm_BIOE_155L <- glm(
+  completed_BIOE_195 ~ time_pct_BIOE_155L + GPA_scaled,
+  data = model_students2b, family = binomial("logit")
+)
+summary(glm_BIOE_155L)
+
 
 # Tidy + relabel (Took vs Timing)
 or_all <- broom::tidy(glm_all_courses, conf.int = TRUE) %>%
