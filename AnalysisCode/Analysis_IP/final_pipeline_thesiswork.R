@@ -711,7 +711,7 @@ student_year <- time_completed_summary %>%
                 SE.Subject.Catalog.Nbr == "BIOE 195") %>%
   dplyr::group_by(CodedID) %>%
   dplyr::summarise(
-    year = suppressWarnings(min(to_year(TA.Term.Code), na.rm = TRUE)),
+    year = suppressWarnings(min(get_year(TA.Term.Code), na.rm = TRUE)),
     .groups = "drop"
   ) %>%
   dplyr::mutate(year = ifelse(is.infinite(year), NA_integer_, year))
@@ -847,8 +847,8 @@ offerings <- time_completed_summary %>%
   summarise(
     n_students   = n(),
     k_thesis     = sum(thesis, na.rm = TRUE),
-    year_offered = first(to_year(term)),
-    quarter      = first(to_quarter(term)),
+    year_offered = first(get_year(term)),
+    quarter      = first(get_quarter(term)),
     .groups = "drop"
   ) %>%
   # 2) join static-by-course attributes
@@ -902,9 +902,6 @@ lighten <- function(col, f = 0.25) {
   }, character(1))
 }
 
-# NOTE: assumes you already defined `to_year()` and have
-# `time_completed_summary` + `model_students2` in memory.
-
 # ========================
 # Per-student first year for each course & join to model frame
 # Creates columns like: year_BIOE_82, year_BIOE_128L, ...
@@ -915,7 +912,7 @@ course_years <- time_completed_summary %>%
   mutate(
     CodedID = as.character(CodedID),
     course  = SE.Subject.Catalog.Nbr,
-    year_fc = to_year(TA.Term.Code)
+    year_fc = get_year(TA.Term.Code)
   ) %>%
   group_by(CodedID, course) %>%
   summarise(first_year = suppressWarnings(min(year_fc, na.rm = TRUE)),
