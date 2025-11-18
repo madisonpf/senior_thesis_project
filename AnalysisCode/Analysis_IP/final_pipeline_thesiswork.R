@@ -220,6 +220,19 @@ agg_all <- purrr::map_dfr(dems, function(var) {
            Demographic = var)
 }) %>% rename(Value = value)
 
+without_latest_term_calc <- agg_all %>%
+  dplyr::mutate(
+    `Dem Rate (Original)`     = percent_fmt(DemRate),
+    `Thesis Rate (Original)`   = percent_fmt(ThesisRate)
+  ) %>%
+  dplyr::select(Demographic, Value, `Dem Rate (Original)`, `Thesis Rate (Original)`) %>%
+  dplyr::arrange(Demographic, Value)
+
+# View in console
+without_latest_term_calc
+
+readr::write_csv(without_latest_term_calc, "no_latest_term_calculations.csv")
+
 # Categorical color palette keyed to *group levels* (used for bars/lines)
 color_palette <- c(
   # EOP
@@ -1086,7 +1099,7 @@ ggplot(
 ## PARTICIPATION GAP MODELS
 ## =========================
 # Filter out unstable/unknown levels to stabilize downstream aggregation/models
-ms2 <- model_students2b %>%
+ms2 <- model_students2 %>%
   filter(PD.Gender...Current != "X",
          !ET.Ethnic.Group.Category %in% c("Native Hawaiian/Oth Pac Island","Unknown/Not Specified"))
 
@@ -1143,16 +1156,21 @@ build_gap_df <- function(df, group_var) {
       mean_n_field_courses      = mean(n_field_courses, na.rm = TRUE),
       mean_avg_time_pct_field_s = mean(avg_time_pct_field_s, na.rm = TRUE),
       mean_GPA_scaled           = mean(GPA_scaled, na.rm = TRUE),
-      dplyr::across(starts_with("flag_completed_"),
-                    ~ mean(.x, na.rm = TRUE), .names = "rate_{.col}"),   # course completion rates
-      .groups = "drop"
-    )
+      dplyr::across(
+        starts_with("completed_BIOE_"),
+        ~ {
+          v <- suppressWarnings(as.numeric(as.character(.x)))
+          v01 <- as.integer(v == 1)
+          mean(v01, na.rm = TRUE)
+        },
+        .names = "rate_{.col}"
+      ))
   
   # Join gap with predictors for modeling
   dplyr::left_join(gap, preds, by = c("Value","Year"))
 }
 
-# 2) Transform ThesisGap (match your old choices)
+# 2) Transform ThesisGap 
 transform_gap <- function(df, method = c("none","asinh","log10shift")) {
   method <- match.arg(method)
   if (method == "asinh") {
@@ -1172,9 +1190,9 @@ fit_gap_lmer <- function(df, response = c("ThesisGap","ThesisGap_asinh","ThesisG
     response, "~",
     paste(c(
       "mean_avg_time_pct_field_s","mean_GPA_scaled",
-      "rate_flag_completed_BIOE_82","rate_flag_completed_BIOE_128L",
-      "rate_flag_completed_BIOE_141L","rate_flag_completed_BIOE_151A",
-      "rate_flag_completed_BIOE_155L"
+      "rate_completed_BIOE_82","rate_completed_BIOE_128L",
+      "rate_completed_BIOE_141L","rate_completed_BIOE_151A",
+      "rate_completed_BIOE_155L"
     ), collapse = " + "),
     "+"
   )
