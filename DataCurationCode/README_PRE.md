@@ -1,14 +1,17 @@
 # Data Curation Code
 
-This is where you store the code that converts the *RawData* to your *DryadData*. This file is also to store data pre-processing code (before final analysis) used for merging Infoview files and prepping data for analysis.
+This folder contains the code used to convert the raw exported files into the final dataset used for analysis (not submitted due to FERPA restrictions - see data availability statement). This includes reading, merging, filtering, and anonymizing data.
 
-The main steps here are: 
+The main steps in this workflow are:
+- Combine and align raw input files
+- Merge tables across terms and sources (Infoview exports, enrollment histories, etc.)
+- Standardize field names and types
+- Filter to analytical scope
+- Include only individuals, time periods, and records used in analysis
+- Remove extraneous terms, duplicate entries, and incomplete records
+- Anonymize identifiers
+- Export clean datasets
+- Output final datasets in simple .csv or .tsv formats
+- Preserve consistent column structure for later use
 
-1. Combine the tables and fields you need
-2. Filter the data to only the individuals, dates, etc. used in analysis
-3. Check and make sure that IDs are anonymous 
-   
-Make sure to keep all possible files in basic csv (or tsv) format for easy access.
-
-The three folders correspond to three uses:
-*Pre-processing code* is intended for pre-processing code and can be less polished (not as many comments and in progress) *private*
+This code is available for submission and reviewer observation, but is requested not to be released for publication due to the locations of original/raw data. 
