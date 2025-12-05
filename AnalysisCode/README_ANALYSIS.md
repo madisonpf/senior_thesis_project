@@ -1,8 +1,18 @@
 # Analysis Code
 
-This the space for analysis code in progress and the generation of figures and tables. This should read in the data directly from *DryadData* folder and output all the files in the *TablesandFigures* folder. 
+This directory contains the final R scripts used to generate the analytical outputs for the manuscript, including:
+- Data processing and cleaning
+- Variable construction (e.g., timing, course flags, demographic categories)
+- Model fitting and inference
+- Figure and table generation
 
-Commenting is suggested on all changes but specifically for adjustments for main code. Below are for detailed instructions on use: 
+The code is fully commented to document the data workflow, modeling decisions, and quality control checks.
 
-#USAGE 
---> *Insert once code finalized*
+Usage: 
+*Important:* These scripts cannot be run without access to the institutional student records used in the analysis. The raw data are protected under FERPA and are not included in this repository. All derived datasets containing potentially identifying information have also been anonymized or aggregated prior to analysis, and are not shared. A Data Availability Statement in the manuscript explains these restrictions.
+
+The code is provided to ensure transparency and reproducibility of:
+- Statistical calculations
+- Field course timing metrics
+- Model outputs, effect estimates, and confidence intervals
+- Supporting figures and tables used in the results
