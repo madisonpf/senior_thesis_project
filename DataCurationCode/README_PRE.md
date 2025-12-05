@@ -15,3 +15,6 @@ The main steps in this workflow are:
 - Preserve consistent column structure for later use
 
 This code is available for submission and reviewer observation, but is requested not to be released for publication due to the locations of original/raw data. 
+
+Structure: 
+/Pre-processing : Contains merged pre-processing script
