@@ -1,5 +1,3 @@
 # Tables and Figures
 
-This is where the data for all tables and figures should be output. It's usually best to output all figures as PDFs or other vector-based images, and all tables as csv files. These can be converted later per specific journal requirements. 
-
-These will typically be made public upon submission/publication.
+This stores all final figures used for the main manuscript text, including conceptual figures and aggregated final figure versions. Naming of the figures here are associated with their positioning in the manuscript. 
