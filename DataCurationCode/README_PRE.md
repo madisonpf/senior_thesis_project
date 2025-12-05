@@ -11,8 +11,6 @@ The main steps in this workflow are:
 - Remove extraneous terms, duplicate entries, and incomplete records
 - Anonymize identifiers
 - Export clean datasets
-- Output final datasets in simple .csv or .tsv formats
-- Preserve consistent column structure for later use
 
 This code is available for submission and reviewer observation, but is requested not to be released for publication due to the locations of original/raw data. 
 
