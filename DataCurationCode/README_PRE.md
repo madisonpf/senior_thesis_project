@@ -12,5 +12,3 @@ Make sure to keep all possible files in basic csv (or tsv) format for easy acces
 
 The three folders correspond to three uses:
 *Pre-processing code* is intended for pre-processing code and can be less polished (not as many comments and in progress) *private*
-*Curated* is intended for finalized versions pre-publishing for sharing with collaborators *public*
-*Reproducible* is intended for publication-ready code at the pre-processing state *public*
