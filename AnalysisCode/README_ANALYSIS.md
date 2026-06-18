@@ -16,3 +16,7 @@ The code is provided to ensure transparency and reproducibility of:
 - Field course timing metrics
 - Model outputs, effect estimates, and confidence intervals
 - Supporting figures and tables used in the results
+
+Items in directory: 
+- 01_analysis.R - contains all analysis prep and statistical models, including some figures for basic distribution of data and reuslts
+- 02_figures_and_supp_tables.R - contains code to create figures from main text using RDS objects from analysis script, Table 1 seen in MS, and all supplementary tables. 
